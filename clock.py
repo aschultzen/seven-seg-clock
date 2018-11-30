@@ -51,16 +51,17 @@ PIN_DATA  = 15
 PIN_LATCH = 13
 PIN_CLOCK = 11
 
-GPIO.setup(PIN_DATA,  GPIO.OUT)
-GPIO.setup(PIN_LATCH, GPIO.OUT)
-GPIO.setup(PIN_CLOCK, GPIO.OUT)
+GPIO.setup(PIN_DATA,  GPIO.OUT, initial=0)
+GPIO.setup(PIN_LATCH, GPIO.OUT, initial=0)
+GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=0)
 
 def shiftout(byte):
-  GPIO.output(PIN_LATCH, 0)
   for x in range(8):
+    GPIO.output(PIN_CLOCK, 0)
     GPIO.output(PIN_DATA, (byte >> x) & 1)
     GPIO.output(PIN_CLOCK, 1)
-    GPIO.output(PIN_CLOCK, 0)
+
+  GPIO.output(PIN_LATCH, 0)
   GPIO.output(PIN_LATCH, 1)
 
 def drawinteger(integer):
@@ -72,19 +73,9 @@ def drawinteger(integer):
 
   print(panel)
 
-  for x in range(0, 6):
-    shiftout(0)
-
   for x in range(0,len(panel)):
     shiftout(panel[x])
 
-for i in range (999999):
+for i in range (0,999999):
    drawinteger(i)
    time.sleep(1)
-
-#counter = 0
-#while True:
-#   shiftout(numbers[counter])
-#   counter = counter + 1
-#   counter = counter%10
-#   time.sleep(1)
