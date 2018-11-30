@@ -56,26 +56,23 @@ GPIO.setup(PIN_LATCH, GPIO.OUT, initial=0)
 GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=0)
 
 def shiftout(byte):
-  for x in range(8):
-    GPIO.output(PIN_CLOCK, 0)
-    GPIO.output(PIN_DATA, (byte >> x) & 1)
-    GPIO.output(PIN_CLOCK, 1)
-
-  GPIO.output(PIN_LATCH, 0)
-  GPIO.output(PIN_LATCH, 1)
+	for x in range(8):
+		GPIO.output(PIN_CLOCK, 0)
+		GPIO.output(PIN_DATA, (byte >> x) & 1)
+		GPIO.output(PIN_CLOCK, 1)
 
 def drawinteger(integer):
-  panel = clearpanel
-  intlist = list(str(integer))
-  intlist = intlist[::-1]
-  for x in range(0,len(intlist)):
-    panel[x] = numbers[int(intlist[x])]
+	panel = clearpanel
+	intlist = list(str(integer))
+	intlist = intlist[::-1]
+	for x in range(0,len(intlist)):
+		panel[x] = numbers[int(intlist[x])]
 
-  print(panel)
+	GPIO.output(PIN_LATCH, 0)
+	for x in range(0,len(panel)):
+		shiftout(panel[x])
 
-  for x in range(0,len(panel)):
-    shiftout(panel[x])
+	GPIO.output(PIN_LATCH, 1)
 
-for i in range (0,999999):
-   drawinteger(i)
-   time.sleep(1)
+if __name__ == '__main__':
+	drawinteger(10)
