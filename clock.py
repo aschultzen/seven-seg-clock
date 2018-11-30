@@ -1,5 +1,6 @@
 import time
 import RPi.GPIO as GPIO
+from time import gmtime, strftime
 
 #  A
 # F B
@@ -10,6 +11,11 @@ import RPi.GPIO as GPIO
 # The lines over are supposed to be
 # a "drawing" of the segments and
 # their respective positions.
+
+# Modes
+CLOCK_MODE = 1
+COUNTER_MODE = 2
+TIMER_MODE = 3
 
 # Segments HEX codes
 SEG_DP = 0x1
@@ -24,7 +30,7 @@ SEG_A = 0x80
 # Number HEX codes
 ZERO = SEG_A + SEG_B + SEG_C + SEG_D + SEG_E + SEG_F
 ONE = SEG_B + SEG_C
-TWO = SEG_A + SEG_B + SEG_G + SEG_E + SEG_D
+TWO = SEG,_A + SEG_B + SEG_G + SEG_E + SEG_D
 THREE = SEG_A + SEG_B + SEG_G + SEG_C + SEG_D
 FOUR = SEG_F + SEG_B + SEG_G + SEG_C
 FIVE = SEG_A + SEG_F + SEG_G + SEG_C + SEG_D
@@ -74,5 +80,17 @@ def drawinteger(integer):
 
 	GPIO.output(PIN_LATCH, 1)
 
+def gettime():
+	time = strftime("%H%M%S", gmtime())
+	return int(time)
+
 if __name__ == '__main__':
-	drawinteger(10)
+	clockmode = CLOCK_MODE
+	countdown = datetime.datetime(1981, 6, 16, 4, 0, 0)
+
+	while(clockmode == CLOCK_MODE):
+		drawinteger(gettime())
+		time.sleep(0.5)
+
+	while(clockmode == COUNTER_MODE):
+		drawinteger(countdown)
