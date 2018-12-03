@@ -61,12 +61,17 @@ ORANGE_BUTTON_PIN = 16
 ORANGE2_BUTTON_PIN = 18
 GREY_BUTTON_PIN = 22
 
+# Action pins
+MODE_ACTION = ORANGE2_BUTTON_PIN
+HOUR_ADD_ACTION = GREEN_BUTTON_PIN
+MIN_ADD_ACTION = WHITE_BUTTON_PIN
+SEC_ADD_ACTION = GREY_BUTTON_PIN
+STARTSTOP_ACTION = ORANGE_BUTTON_PIN
+CLEAR_ACTION = PURPLE_BUTTON_PIN
+
 # Counter variables
 counter_start = 0
 counter_end = 0
-
-def button_callback(channel):
-	print(channel)
 
 # Setting GPIO mode
 GPIO.setmode(GPIO.BOARD)
@@ -79,22 +84,53 @@ GPIO.setup(ORANGE_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(ORANGE2_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(GREY_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# Setup events for buttons
-GPIO.add_event_detect(WHITE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
-GPIO.add_event_detect(GREEN_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
-GPIO.add_event_detect(PURPLE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
-GPIO.add_event_detect(ORANGE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
-GPIO.add_event_detect(ORANGE2_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
-GPIO.add_event_detect(GREY_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
-
 # Shift register pins
 PIN_DATA  = 15
 PIN_LATCH = 13
 PIN_CLOCK = 11
 
+# Shift register pins setup
 GPIO.setup(PIN_DATA,  GPIO.OUT, initial=0)
 GPIO.setup(PIN_LATCH, GPIO.OUT, initial=0)
 GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=0)
+
+def setmode():
+    print("setmode")
+
+def addhour():
+	print("addhour")
+
+def addmin():
+	print("addmin")
+
+def addsec():
+	print("addsec")
+
+def startstop():
+	print("startstop")
+
+def clearclock():
+	print("clearclock")
+
+def button_callback(channel):
+	switcher = {
+		MODE_ACTION: setmode,
+		HOUR_ADD_ACTION: addhour,
+		MIN_ADD_ACTION: addmin,
+		SEC_ADD_ACTION: addsec,
+		STARTSTOP_ACTION: startstop,
+		CLEAR_ACTION: clearclock
+	}
+	func = switcher.get(channel, lambda: "Invalid month")
+	func()
+
+# Setup events for buttons
+GPIO.add_event_detect(WHITE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=200)
+GPIO.add_event_detect(GREEN_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=200)
+GPIO.add_event_detect(PURPLE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=200)
+GPIO.add_event_detect(ORANGE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=200)
+GPIO.add_event_detect(ORANGE2_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=200)
+GPIO.add_event_detect(GREY_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=200)
 
 def shiftout(byte):
 	for x in range(8):
