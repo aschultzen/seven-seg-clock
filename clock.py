@@ -1,6 +1,7 @@
 import time
 import RPi.GPIO as GPIO
-from time import gmtime, strftime
+import datetime
+from time import localtime, strftime
 
 #  A
 # F B
@@ -30,7 +31,7 @@ SEG_A = 0x80
 # Number HEX codes
 ZERO = SEG_A + SEG_B + SEG_C + SEG_D + SEG_E + SEG_F
 ONE = SEG_B + SEG_C
-TWO = SEG,_A + SEG_B + SEG_G + SEG_E + SEG_D
+TWO = SEG_A + SEG_B + SEG_G + SEG_E + SEG_D
 THREE = SEG_A + SEG_B + SEG_G + SEG_C + SEG_D
 FOUR = SEG_F + SEG_B + SEG_G + SEG_C
 FIVE = SEG_A + SEG_F + SEG_G + SEG_C + SEG_D
@@ -52,7 +53,41 @@ letters = [A, B, C, D, E, F]
 clearpanel = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0]
 zeropanel = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
 
+# Button pins
+WHITE_BUTTON_PIN = 3
+GREEN_BUTTON_PIN = 5
+PURPLE_BUTTON_PIN = 7
+ORANGE_BUTTON_PIN = 16
+ORANGE2_BUTTON_PIN = 18
+GREY_BUTTON_PIN = 22
+
+# Counter variables
+counter_start = 0
+counter_end = 0
+
+def button_callback(channel):
+	print(channel)
+
+# Setting GPIO mode
 GPIO.setmode(GPIO.BOARD)
+
+# Setting up the push-buttons
+GPIO.setup(WHITE_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(GREEN_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(PURPLE_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(ORANGE_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(ORANGE2_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(GREY_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+# Setup events for buttons
+GPIO.add_event_detect(WHITE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
+GPIO.add_event_detect(GREEN_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
+GPIO.add_event_detect(PURPLE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
+GPIO.add_event_detect(ORANGE_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
+GPIO.add_event_detect(ORANGE2_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
+GPIO.add_event_detect(GREY_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bouncetime=250)
+
+# Shift register pins
 PIN_DATA  = 15
 PIN_LATCH = 13
 PIN_CLOCK = 11
@@ -81,16 +116,18 @@ def drawinteger(integer):
 	GPIO.output(PIN_LATCH, 1)
 
 def gettime():
-	time = strftime("%H%M%S", gmtime())
+	time = strftime("%H%M%S", localtime())
 	return int(time)
+
+def formattime(time):
+	return int(strftime("%H%M%S", time))
 
 if __name__ == '__main__':
 	clockmode = CLOCK_MODE
-	countdown = datetime.datetime(1981, 6, 16, 4, 0, 0)
 
 	while(clockmode == CLOCK_MODE):
 		drawinteger(gettime())
 		time.sleep(0.5)
 
-	while(clockmode == COUNTER_MODE):
-		drawinteger(countdown)
+	#while(clockmode == COUNTER_MODE):
+		#drawinteger()
