@@ -14,9 +14,11 @@ from time import localtime, strftime
 # their respective positions.
 
 # Modes
-CLOCK_MODE = 1
-COUNTER_MODE = 2
-TIMER_MODE = 3
+CLOCK_MODE = 0
+COUNTER_MODE = 1
+TIMER_MODE = 2
+NUM_STATES = 3
+current_clock_state = 0
 
 # Segments HEX codes
 SEG_DP = 0x1
@@ -52,6 +54,7 @@ numbers = [ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE]
 letters = [A, B, C, D, E, F]
 clearpanel = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0]
 zeropanel = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
+previous_integer = 0
 
 # Button pins
 WHITE_BUTTON_PIN = 3
@@ -70,8 +73,13 @@ STARTSTOP_ACTION = ORANGE_BUTTON_PIN
 CLEAR_ACTION = PURPLE_BUTTON_PIN
 
 # Counter variables
+counter_status = 0
 counter_start = 0
-counter_end = 0
+counter_stop = 0
+counter_seconds = 0
+counter_minutes = 0
+counter_hours = 0
+counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
 
 # Setting GPIO mode
 GPIO.setmode(GPIO.BOARD)
@@ -95,18 +103,33 @@ GPIO.setup(PIN_LATCH, GPIO.OUT, initial=0)
 GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=0)
 
 def setmode():
-    print("setmode")
+	global current_clock_state
+	current_clock_state = current_clock_state + 1
+	current_clock_state = current_clock_state % NUM_STATES
+	print(current_clock_state)
 
 def addhour():
+	global counter_offsett
+	counter_offsett = counter_offsett + datetime.timedelta(hours=1)
 	print("addhour")
 
 def addmin():
+	global counter_offsett
+	counter_offsett = counter_offsett + datetime.timedelta(minutes=1)
 	print("addmin")
 
 def addsec():
+	global counter_offsett
+	counter_offsett = counter_offsett + datetime.timedelta(seconds=1)
 	print("addsec")
 
 def startstop():
+	global current_clock_state
+	if(current_clock_state == COUNTER_MODE):
+		counter_status = 1
+		global counter_start, counter_stop, counter_seconds, counter_minutes, counter_hours
+		counter_stop = strftime("%H%M%S", localtime()) + datetime.timedelta(seconds=counter_seconds, minutes=counter_minutes, hours=counter_hours)
+		counter_start = strftime("%H%M%S", localtime())
 	print("startstop")
 
 def clearclock():
@@ -139,31 +162,42 @@ def shiftout(byte):
 		GPIO.output(PIN_CLOCK, 1)
 
 def drawinteger(integer):
-	panel = clearpanel
-	intlist = list(str(integer))
-	intlist = intlist[::-1]
-	for x in range(0,len(intlist)):
-		panel[x] = numbers[int(intlist[x])]
+	global previous_integer
+	if integer != previous_integer:
+		panel = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
+		intlist = list(str(integer))
+		intlist = intlist[::-1]
+		for x in range(0,len(intlist)):
+			panel[x] = numbers[int(intlist[x])]
 
-	GPIO.output(PIN_LATCH, 0)
-	for x in range(0,len(panel)):
-		shiftout(panel[x])
+		GPIO.output(PIN_LATCH, 0)
+		for x in range(0,len(panel)):
+			shiftout(panel[x])
 
-	GPIO.output(PIN_LATCH, 1)
+		GPIO.output(PIN_LATCH, 1)
+	previous_integer = integer
 
 def gettime():
 	time = strftime("%H%M%S", localtime())
 	return int(time)
 
-def formattime(time):
-	return int(strftime("%H%M%S", time))
+def formattime(sometime):
+	print(sometime)
+	print(int(sometime.strftime("%H%M%S")))
+	return (int(sometime.strftime("%H%M%S")))
 
 if __name__ == '__main__':
-	clockmode = CLOCK_MODE
+	forever = True
+	while(forever):
+		while(current_clock_state == CLOCK_MODE):
+			drawinteger(gettime())
+			time.sleep(0.5)
 
-	while(clockmode == CLOCK_MODE):
-		drawinteger(gettime())
-		time.sleep(0.5)
+		while(current_clock_state == COUNTER_MODE):
+			print("Counter mode!")
+			drawinteger(formattime(counter_offsett))
+			time.sleep(0.1)
 
-	#while(clockmode == COUNTER_MODE):
-		#drawinteger()
+		while(current_clock_state == TIMER_MODE):
+			drawinteger(1)
+			time.sleep(0.5)
