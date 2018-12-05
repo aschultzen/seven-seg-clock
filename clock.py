@@ -1,7 +1,11 @@
 import time
 import RPi.GPIO as GPIO
 import datetime
+import signal
+import sys
 from time import localtime, strftime
+from threading import Thread
+
 
 #  A
 # F B
@@ -12,6 +16,9 @@ from time import localtime, strftime
 # The lines over are supposed to be
 # a "drawing" of the segments and
 # their respective positions.
+
+# Keep going?
+forever = True
 
 # Modes
 CLOCK_MODE = 0
@@ -80,7 +87,7 @@ counter_seconds = 0
 counter_minutes = 0
 counter_hours = 0
 counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
-
+counter_remaining = 0
 # Setting GPIO mode
 GPIO.setmode(GPIO.BOARD)
 
@@ -102,11 +109,17 @@ GPIO.setup(PIN_DATA,  GPIO.OUT, initial=0)
 GPIO.setup(PIN_LATCH, GPIO.OUT, initial=0)
 GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=0)
 
+def signal_handler(sig, frame):
+	global forever
+	print("SIGINT received, exiting...")
+	forever = False
+
+signal.signal(signal.SIGINT, signal_handler)
+
 def setmode():
 	global current_clock_state
 	current_clock_state = current_clock_state + 1
 	current_clock_state = current_clock_state % NUM_STATES
-	print(current_clock_state)
 
 def addhour():
 	global counter_offsett
@@ -125,14 +138,18 @@ def addsec():
 
 def startstop():
 	global current_clock_state
+	global counter_status
 	if(current_clock_state == COUNTER_MODE):
-		counter_status = 1
-		global counter_start, counter_stop, counter_seconds, counter_minutes, counter_hours
-		counter_stop = strftime("%H%M%S", localtime()) + datetime.timedelta(seconds=counter_seconds, minutes=counter_minutes, hours=counter_hours)
-		counter_start = strftime("%H%M%S", localtime())
-	print("startstop")
+		if(counter_status == 0):
+			print("Starting counter")
+			counter_status = 1
+		else:
+			print("Stop counter")
+			counter_status = 0
 
 def clearclock():
+	global counter_offsett
+	counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
 	print("clearclock")
 
 def button_callback(channel):
@@ -144,7 +161,7 @@ def button_callback(channel):
 		STARTSTOP_ACTION: startstop,
 		CLEAR_ACTION: clearclock
 	}
-	func = switcher.get(channel, lambda: "Invalid month")
+	func = switcher.get(channel, lambda: "Invalid value")
 	func()
 
 # Setup events for buttons
@@ -182,22 +199,38 @@ def gettime():
 	return int(time)
 
 def formattime(sometime):
-	print(sometime)
-	print(int(sometime.strftime("%H%M%S")))
+	#print(int(sometime.strftime("%H%M%S")))
 	return (int(sometime.strftime("%H%M%S")))
 
-if __name__ == '__main__':
-	forever = True
+def clocktick():
+	global counter_offsett
+	correction = 0
+	reference = time.time()
 	while(forever):
-		while(current_clock_state == CLOCK_MODE):
+		start = time.time()
+		correction = ((time.time() - reference) % 1)
+		if(counter_status == 1):
+			print("counter_status is now 1")
+			counter_offsett = counter_offsett - datetime.timedelta(seconds=1)
+		time.sleep(1 - (time.time() - start) - correction)
+
+if __name__ == '__main__':
+	thread = Thread(target = clocktick, args = ())
+	thread.start()
+
+	while(forever):
+		while(current_clock_state == CLOCK_MODE and forever):
 			drawinteger(gettime())
 			time.sleep(0.5)
 
-		while(current_clock_state == COUNTER_MODE):
-			print("Counter mode!")
+		while(current_clock_state == COUNTER_MODE and forever):
+			#print("Counter mode!")
 			drawinteger(formattime(counter_offsett))
 			time.sleep(0.1)
 
-		while(current_clock_state == TIMER_MODE):
+		while(current_clock_state == TIMER_MODE and forever):
+			print("Timer mode!")
 			drawinteger(1)
 			time.sleep(0.5)
+
+	print("Thread killed, done.")
