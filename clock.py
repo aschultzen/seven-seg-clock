@@ -6,7 +6,6 @@ import sys
 from time import localtime, strftime
 from threading import Thread
 
-
 #  A
 # F B
 #  G
@@ -18,7 +17,7 @@ from threading import Thread
 # their respective positions.
 
 # Keep going?
-forever = True
+alive = True
 
 # Modes
 CLOCK_MODE = 0
@@ -28,10 +27,12 @@ NUM_STATES = 3
 current_clock_state = 0 # remember to change this name
 
 # States
-COUNTER_STOPPED = 0
-COUNTER_STARTED = 1
-COUNTER_PAUSED = 2
-COUNTER_FINISHED = 3
+LOW = 0
+HIGH = 1
+STOPPED = 0
+STARTED = 1
+PAUSED = 2
+FINISHED = 3
 
 # Segments HEX codes
 SEG_DP = 0x1
@@ -87,7 +88,11 @@ CLEAR_ACTION = PURPLE_BUTTON_PIN
 
 # Counter variables
 counter_status = 0
-counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
+counter_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
+
+# Timer variables
+timer_status = 0
+timer_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
 
 # Setting GPIO mode
 GPIO.setmode(GPIO.BOARD)
@@ -106,14 +111,14 @@ PIN_LATCH = 13
 PIN_CLOCK = 11
 
 # Shift register pins setup
-GPIO.setup(PIN_DATA,  GPIO.OUT, initial=0)
-GPIO.setup(PIN_LATCH, GPIO.OUT, initial=0)
-GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=0)
+GPIO.setup(PIN_DATA,  GPIO.OUT, initial=LOW)
+GPIO.setup(PIN_LATCH, GPIO.OUT, initial=LOW)
+GPIO.setup(PIN_CLOCK, GPIO.OUT, initial=LOW)
 
 def signal_handler(sig, frame):
-	global forever
+	global alive
 	print("SIGINT received, exiting...")
-	forever = False
+	alive = False
 
 signal.signal(signal.SIGINT, signal_handler)
 
@@ -123,35 +128,41 @@ def setmode():
 	current_clock_state = current_clock_state % NUM_STATES
 
 def addhour():
-	global counter_offsett
-	counter_offsett = counter_offsett + datetime.timedelta(hours=1)
+	global counter_time
+	counter_time = counter_time + datetime.timedelta(hours=1)
 	print("addhour")
 
 def addmin():
-	global counter_offsett
-	counter_offsett = counter_offsett + datetime.timedelta(minutes=1)
+	global counter_time
+	counter_time = counter_time + datetime.timedelta(minutes=1)
 	print("addmin")
 
 def addsec():
-	global counter_offsett
-	counter_offsett = counter_offsett + datetime.timedelta(seconds=1)
+	global counter_time
+	counter_time = counter_time + datetime.timedelta(seconds=1)
 	print("addsec")
 
 def startstop():
-	global current_clock_state
-	global counter_status
+	global current_clock_state, counter_status
 	if(current_clock_state == COUNTER_MODE):
-		if(counter_status == 0):
+		if(counter_status == STOPPED):
 			print("Starting counter")
-			counter_status = 1
+			counter_status = STARTED
 		else:
-			print("Stop counter")
-			counter_status = 0
+			print("Stopping counter")
+			counter_status = STOPPED
+	if(current_clock_state == TIMER_MODE):
+		if(timer_status == STOPPED):
+			print("Starting timer")
+			timer_status = STARTED
+		else:
+			print("Stopping timer")
+			timer_status = STOPPED
 
 def clearclock():
-	global counter_offsett, counter_status
-	counter_status = COUNTER_STOPPED
-	counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
+	global counter_time, counter_status
+	counter_status = STOPPED
+	counter_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
 	print("clearclock")
 
 def button_callback(channel):
@@ -176,9 +187,9 @@ GPIO.add_event_detect(GREY_BUTTON_PIN,GPIO.FALLING,callback=button_callback, bou
 
 def shiftout(byte):
 	for x in range(8):
-		GPIO.output(PIN_CLOCK, 0)
+		GPIO.output(PIN_CLOCK, LOW)
 		GPIO.output(PIN_DATA, (byte >> x) & 1)
-		GPIO.output(PIN_CLOCK, 1)
+		GPIO.output(PIN_CLOCK, HIGH)
 
 def drawinteger(integer):
 	global previous_integer
@@ -189,19 +200,12 @@ def drawinteger(integer):
 		for x in range(0,len(intlist)):
 			panel[x] = numbers[int(intlist[x])]
 
-		GPIO.output(PIN_LATCH, 0)
+		GPIO.output(PIN_LATCH, LOW)
 		for x in range(0,len(panel)):
 			shiftout(panel[x])
 
-		GPIO.output(PIN_LATCH, 1)
+		GPIO.output(PIN_LATCH, HIGH)
 	previous_integer = integer
-
-def drawblank():
-	panel = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0]
-	GPIO.output(PIN_LATCH, 0)
-	for x in range(0,len(panel)):
-		shiftout(panel[x])
-	GPIO.output(PIN_LATCH, 1)
 
 def gettime():
 	time = strftime("%H%M%S", localtime())
@@ -211,35 +215,36 @@ def formattime(sometime):
 	return (int(sometime.strftime("%H%M%S")))
 
 def clocktick():
-	global counter_offsett
+	global counter_time
 	correction = 0
 	reference = time.time()
-	while(forever):
+	while(alive):
 		start = time.time()
 		correction = ((time.time() - reference) % 1)
-		if(counter_status == 1):
-			print("counter_status is now 1")
-			counter_offsett = counter_offsett - datetime.timedelta(seconds=1)
+		if(counter_status == STARTED):
+			counter_time = counter_time - datetime.timedelta(seconds=1)
+		if(timer_status == STARTED):
+			timer_time = timer_time + datetime.timedelta(seconds=1)
 		time.sleep(1 - (time.time() - start) - correction)
 
 if __name__ == '__main__':
 	thread = Thread(target = clocktick, args = ())
 	thread.start()
 
-	while(forever):
-		while(current_clock_state == CLOCK_MODE and forever):
+	while(alive):
+		while(current_clock_state == CLOCK_MODE and alive):
 			drawinteger(gettime())
 			time.sleep(0.5)
 
-		while(current_clock_state == COUNTER_MODE and forever):
-			formatted_time = formattime(counter_offsett)
-			if(counter_status == COUNTER_STARTED):
+		while(current_clock_state == COUNTER_MODE and alive):
+			formatted_time = formattime(counter_time)
+			if(counter_status == STARTED):
 				if(formatted_time == 0):
-					counter_status = COUNTER_FINISHED
-			drawinteger(formattime(counter_offsett))
+					counter_status = FINISHED
+			drawinteger(formattime(counter_time))
 			time.sleep(0.1)
 
-		while(current_clock_state == TIMER_MODE and forever):
+		while(current_clock_state == TIMER_MODE and alive):
 			print("Timer mode!")
 			drawinteger(1)
 			time.sleep(0.5)
