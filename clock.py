@@ -175,9 +175,15 @@ def startstop():
 			timer_status = STOPPED
 
 def clearclock():
-	global counter_time, counter_status
-	counter_status = STOPPED
-	counter_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
+	global counter_time, counter_status, timer_time, timer_status
+	if(current_clock_state == COUNTER_MODE):
+		counter_status = STOPPED
+		counter_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
+
+	if(current_clock_state == TIMER_MODE):
+		timer_status = STOPPED
+		timer_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
+
 	print("clearclock")
 
 def button_callback(channel):
@@ -260,7 +266,7 @@ if __name__ == '__main__':
 			time.sleep(0.1)
 
 		while(current_clock_state == TIMER_MODE and alive):
-			drawinteger(formatted_time(timer_time))
+			drawinteger(formattime(timer_time))
 			time.sleep(0.5)
 
 	print("Thread killed, done.")
