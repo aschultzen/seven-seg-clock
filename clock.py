@@ -132,18 +132,33 @@ def addhour():
 	counter_time = counter_time + datetime.timedelta(hours=1)
 	print("addhour")
 
+def dechour():
+	global counter_time
+	counter_time = counter_time - datetime.timedelta(hours=1)
+	print("dechour")
+
 def addmin():
 	global counter_time
 	counter_time = counter_time + datetime.timedelta(minutes=1)
 	print("addmin")
+
+def decmin():
+	global counter_time
+	counter_time = counter_time - datetime.timedelta(minutes=1)
+	print("decmin")
 
 def addsec():
 	global counter_time
 	counter_time = counter_time + datetime.timedelta(seconds=1)
 	print("addsec")
 
+def decsec():
+	global counter_time
+	counter_time = counter_time - datetime.timedelta(seconds=1)
+	print("decsec")
+
 def startstop():
-	global current_clock_state, counter_status
+	global current_clock_state, counter_status, timer_status
 	if(current_clock_state == COUNTER_MODE):
 		if(counter_status == STOPPED):
 			print("Starting counter")
@@ -215,7 +230,7 @@ def formattime(sometime):
 	return (int(sometime.strftime("%H%M%S")))
 
 def clocktick():
-	global counter_time
+	global counter_time, timer_time
 	correction = 0
 	reference = time.time()
 	while(alive):
@@ -245,8 +260,7 @@ if __name__ == '__main__':
 			time.sleep(0.1)
 
 		while(current_clock_state == TIMER_MODE and alive):
-			print("Timer mode!")
-			drawinteger(1)
+			drawinteger(formatted_time(timer_time))
 			time.sleep(0.5)
 
 	print("Thread killed, done.")
