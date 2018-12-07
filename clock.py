@@ -25,7 +25,13 @@ CLOCK_MODE = 0
 COUNTER_MODE = 1
 TIMER_MODE = 2
 NUM_STATES = 3
-current_clock_state = 0
+current_clock_state = 0 # remember to change this name
+
+# States
+COUNTER_STOPPED = 0
+COUNTER_STARTED = 1
+COUNTER_PAUSED = 2
+COUNTER_FINISHED = 3
 
 # Segments HEX codes
 SEG_DP = 0x1
@@ -81,13 +87,8 @@ CLEAR_ACTION = PURPLE_BUTTON_PIN
 
 # Counter variables
 counter_status = 0
-counter_start = 0
-counter_stop = 0
-counter_seconds = 0
-counter_minutes = 0
-counter_hours = 0
 counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
-counter_remaining = 0
+
 # Setting GPIO mode
 GPIO.setmode(GPIO.BOARD)
 
@@ -148,7 +149,8 @@ def startstop():
 			counter_status = 0
 
 def clearclock():
-	global counter_offsett
+	global counter_offsett, counter_status
+	counter_status = COUNTER_STOPPED
 	counter_offsett = datetime.datetime(2018, 01, 01, 0, 0, 00)
 	print("clearclock")
 
@@ -194,12 +196,18 @@ def drawinteger(integer):
 		GPIO.output(PIN_LATCH, 1)
 	previous_integer = integer
 
+def drawblank():
+	panel = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0]
+	GPIO.output(PIN_LATCH, 0)
+	for x in range(0,len(panel)):
+		shiftout(panel[x])
+	GPIO.output(PIN_LATCH, 1)
+
 def gettime():
 	time = strftime("%H%M%S", localtime())
 	return int(time)
 
 def formattime(sometime):
-	#print(int(sometime.strftime("%H%M%S")))
 	return (int(sometime.strftime("%H%M%S")))
 
 def clocktick():
@@ -224,7 +232,10 @@ if __name__ == '__main__':
 			time.sleep(0.5)
 
 		while(current_clock_state == COUNTER_MODE and forever):
-			#print("Counter mode!")
+			formatted_time = formattime(counter_offsett)
+			if(counter_status == COUNTER_STARTED):
+				if(formatted_time == 0):
+					counter_status = COUNTER_FINISHED
 			drawinteger(formattime(counter_offsett))
 			time.sleep(0.1)
 
