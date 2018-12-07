@@ -33,6 +33,7 @@ STOPPED = 0
 STARTED = 1
 PAUSED = 2
 FINISHED = 3
+UNINITIALIZED = 4
 
 # Segments HEX codes
 SEG_DP = 0x1
@@ -59,10 +60,21 @@ NINE = EIGHT - SEG_E  - SEG_D
 # Letters
 A = EIGHT - SEG_D
 B = EIGHT - SEG_B - SEG_A
-C = ZERO - SEG_B - SEG_C - SEG_G
+C = SEG_G + SEG_E + SEG_D
 D = EIGHT - SEG_F - SEG_A
-E = EIGHT - SEG_B + SEG_C
+E = EIGHT - SEG_B - SEG_C
 F = EIGHT - SEG_D - SEG_C - SEG_B
+H = EIGHT - SEG_A - SEG_D
+I = SEG_E
+M = SEG_E + SEG_A + SEG_C
+N = SEG_E + SEG_G + SEG_C
+O = SEG_D + SEG_E + SEG_G + SEG_C
+R = SEG_E + SEG_G
+S = FIVE
+T = EIGHT - SEG_A - SEG_B - SEG_C
+U = ZERO - SEG_A
+V = SEG_E + SEG_G + SEG_C
+Y = EIGHT - SEG_A - SEG_E
 
 numbers = [ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE]
 letters = [A, B, C, D, E, F]
@@ -87,11 +99,11 @@ STARTSTOP_ACTION = ORANGE_BUTTON_PIN
 CLEAR_ACTION = PURPLE_BUTTON_PIN
 
 # Counter variables
-counter_status = 0
+counter_status = UNINITIALIZED
 counter_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
 
 # Timer variables
-timer_status = 0
+timer_status = UNINITIALIZED
 timer_time = datetime.datetime(2018, 01, 01, 0, 0, 00)
 
 # Setting GPIO mode
@@ -160,14 +172,14 @@ def decsec():
 def startstop():
 	global current_clock_state, counter_status, timer_status
 	if(current_clock_state == COUNTER_MODE):
-		if(counter_status == STOPPED):
+		if(counter_status == STOPPED or counter_status == UNINITIALIZED):
 			print("Starting counter")
 			counter_status = STARTED
 		else:
 			print("Stopping counter")
 			counter_status = STOPPED
 	if(current_clock_state == TIMER_MODE):
-		if(timer_status == STOPPED):
+		if(timer_status == STOPPED or timer_status == UNINITIALIZED):
 			print("Starting timer")
 			timer_status = STARTED
 		else:
@@ -187,6 +199,7 @@ def clearclock():
 	print("clearclock")
 
 def button_callback(channel):
+	global counter_status
 	switcher = {
 		MODE_ACTION: setmode,
 		HOUR_ADD_ACTION: addhour,
@@ -196,6 +209,9 @@ def button_callback(channel):
 		CLEAR_ACTION: clearclock
 	}
 	func = switcher.get(channel, lambda: "Invalid value")
+	if(channel == 22 or channel == 5 or channel == 19):
+		if(current_clock_state == COUNTER_MODE and counter_status == UNINITIALIZED):
+			counter_status = STOPPED
 	func()
 
 # Setup events for buttons
@@ -221,12 +237,15 @@ def drawinteger(integer):
 		for x in range(0,len(intlist)):
 			panel[x] = numbers[int(intlist[x])]
 
-		GPIO.output(PIN_LATCH, LOW)
-		for x in range(0,len(panel)):
-			shiftout(panel[x])
-
-		GPIO.output(PIN_LATCH, HIGH)
+		drawpanel(panel)
 	previous_integer = integer
+
+def drawpanel(panel):
+	GPIO.output(PIN_LATCH, LOW)
+	for x in range(0,len(panel)):
+		shiftout(panel[x])
+
+	GPIO.output(PIN_LATCH, HIGH)
 
 def gettime():
 	time = strftime("%H%M%S", localtime())
@@ -259,6 +278,8 @@ if __name__ == '__main__':
 
 		while(current_clock_state == COUNTER_MODE and alive):
 			formatted_time = formattime(counter_time)
+			if(counter_status == UNINITIALIZED):
+				drawpanel([D,T,N,U,O,C]) # Backwards, I know.
 			if(counter_status == STARTED):
 				if(formatted_time == 0):
 					counter_status = FINISHED
@@ -266,7 +287,10 @@ if __name__ == '__main__':
 			time.sleep(0.1)
 
 		while(current_clock_state == TIMER_MODE and alive):
-			drawinteger(formattime(timer_time))
-			time.sleep(0.5)
+			if(timer_status == UNINITIALIZED):
+				drawpanel([0x0,R,E,M,I,T])
+			else:
+				drawinteger(formattime(timer_time))
+			time.sleep(0.1)
 
 	print("Thread killed, done.")
